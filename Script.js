@@ -68,20 +68,22 @@ document.querySelectorAll(".type-btn").forEach(btn => {
 // ── START INTERVIEW ───────────────────────────────────────────────────────────
 startBtn.addEventListener("click", async () => {
   const key = apiKeyInput.value.trim();
-  if (!key) { alert("Please enter your Anthropic API key!"); return; }
+  if (!key) { 
+    alert("Please enter your Anthropic API key!"); 
+    return; 
+  }
   API_KEY = key;
 
-  // Reset state
   currentQ = 0; questions = []; answers = []; feedbacks = [];
   chatArea.innerHTML = "";
   chatArea.appendChild(thinkingMsg);
 
-  // Switch screen
+  // Switch screen FIRST
   showScreen("interview");
   headerRole.textContent = `${selectedRole} Interview`;
   updateProgress();
 
-  // Generate questions
+  // Then generate questions
   thinkingMsg.style.display = "flex";
   try {
     questions = await generateQuestions();
@@ -89,8 +91,9 @@ startBtn.addEventListener("click", async () => {
     askQuestion(0);
   } catch (e) {
     thinkingMsg.style.display = "none";
-    addAIMessage("Sorry, I couldn't connect to the AI. Please check your API key and try again.");
+    addAIMessage("Sorry, I couldn't connect. Please check your API key.");
   }
+});
 });
 
 // ── GENERATE QUESTIONS ────────────────────────────────────────────────────────

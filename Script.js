@@ -6,23 +6,20 @@
  * Features: Voice + Text input, Technical + HR questions, Score & Feedback
  */
 
-// ── CONFIG ───────────────────────────────────────────────────────────────────
-const MODEL       = "claude-sonnet-4-6";
-const TOTAL_Q     = 8;
+const MODEL   = "claude-sonnet-4-6";
+const TOTAL_Q = 8;
 
-// ── STATE ────────────────────────────────────────────────────────────────────
-let API_KEY       = "";
-let selectedRole  = "Data Science";
-let selectedType  = "both";
-let currentQ      = 0;
-let questions     = [];
-let answers       = [];
-let feedbacks     = [];
-let isListening   = false;
-let recognition   = null;
-let isWaiting     = false;
+let API_KEY      = "";
+let selectedRole = "Data Science";
+let selectedType = "both";
+let currentQ     = 0;
+let questions    = [];
+let answers      = [];
+let feedbacks    = [];
+let isListening  = false;
+let recognition  = null;
+let isWaiting    = false;
 
-// ── DOM ──────────────────────────────────────────────────────────────────────
 const homeScreen      = document.getElementById("homeScreen");
 const interviewScreen = document.getElementById("interviewScreen");
 const resultsScreen   = document.getElementById("resultsScreen");
@@ -65,25 +62,38 @@ document.querySelectorAll(".type-btn").forEach(btn => {
   });
 });
 
-// ── START INTERVIEW ───────────────────────────────────────────────────────────
+// ── SHOW SCREEN ───────────────────────────────────────────────────────────────
+function showScreen(name) {
+  [homeScreen, interviewScreen, resultsScreen].forEach(s => {
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
+  if (name === "home") {
+    homeScreen.classList.add("active");
+    homeScreen.style.display = "flex";
+  } else if (name === "interview") {
+    interviewScreen.classList.add("active");
+    interviewScreen.style.display = "flex";
+  } else if (name === "results") {
+    resultsScreen.classList.add("active");
+    resultsScreen.style.display = "flex";
+  }
+}
+
+// ── START ─────────────────────────────────────────────────────────────────────
 startBtn.addEventListener("click", async () => {
   const key = apiKeyInput.value.trim();
-  if (!key) { 
-    alert("Please enter your Anthropic API key!"); 
-    return; 
-  }
+  if (!key) { alert("Please enter your Anthropic API key!"); return; }
   API_KEY = key;
 
   currentQ = 0; questions = []; answers = []; feedbacks = [];
   chatArea.innerHTML = "";
   chatArea.appendChild(thinkingMsg);
 
-  // Switch screen FIRST
   showScreen("interview");
   headerRole.textContent = `${selectedRole} Interview`;
   updateProgress();
 
-  // Then generate questions
   thinkingMsg.style.display = "flex";
   try {
     questions = await generateQuestions();
@@ -91,9 +101,8 @@ startBtn.addEventListener("click", async () => {
     askQuestion(0);
   } catch (e) {
     thinkingMsg.style.display = "none";
-    addAIMessage("Sorry, I couldn't connect. Please check your API key.");
+    addAIMessage("Sorry, couldn't connect. Please check your API key.");
   }
-});
 });
 
 // ── GENERATE QUESTIONS ────────────────────────────────────────────────────────
@@ -105,9 +114,9 @@ async function generateQuestions() {
 
   const prompt = `Generate exactly ${TOTAL_Q} interview questions for a ${selectedRole} role.
 ${typePrompt}
-Questions should be realistic, varied in difficulty, and specific to ${selectedRole}.
+Questions should be realistic and specific to ${selectedRole}.
 
-Respond ONLY with a JSON array of strings. No markdown, no backticks, no explanation:
+Respond ONLY with a JSON array of strings. No markdown, no backticks:
 ["question 1","question 2","question 3","question 4","question 5","question 6","question 7","question 8"]`;
 
   const res = await callClaude(prompt, 600);
@@ -118,7 +127,7 @@ Respond ONLY with a JSON array of strings. No markdown, no backticks, no explana
   return JSON.parse(clean.substring(start, end + 1));
 }
 
-// ── ASK QUESTION ─────────────────────────────────────────────────────────────
+// ── ASK QUESTION ──────────────────────────────────────────────────────────────
 function askQuestion(index) {
   if (index >= questions.length) { endInterview(); return; }
   currentQ = index;
@@ -141,7 +150,6 @@ function askQuestion(index) {
 function getQuestionTag(index) {
   if (selectedType === "hr") return { label: "HR", bg: "#60A5FA18", color: "#60A5FA" };
   if (selectedType === "technical") return { label: "TECHNICAL", bg: "#6EE7B718", color: "#6EE7B7" };
-  // Both: first 5 technical, last 3 HR
   if (index < 5) return { label: "TECHNICAL", bg: "#6EE7B718", color: "#6EE7B7" };
   return { label: "HR", bg: "#60A5FA18", color: "#60A5FA" };
 }
@@ -165,24 +173,17 @@ async function submitAnswer() {
   answerInput.disabled = true;
   isWaiting = true;
 
-  // Show thinking
   thinkingMsg.style.display = "flex";
 
   try {
     const feedback = await evaluateAnswer(questions[currentQ], answer);
     feedbacks.push(feedback);
     thinkingMsg.style.display = "none";
-
-    // Show feedback
     addFeedbackBubble(feedback);
 
-    // Next question after delay
     setTimeout(() => {
-      if (currentQ + 1 < questions.length) {
-        askQuestion(currentQ + 1);
-      } else {
-        endInterview();
-      }
+      if (currentQ + 1 < questions.length) askQuestion(currentQ + 1);
+      else endInterview();
       isWaiting = false;
     }, 1800);
 
@@ -197,7 +198,7 @@ async function submitAnswer() {
   }
 }
 
-// ── EVALUATE ANSWER ───────────────────────────────────────────────────────────
+// ── EVALUATE ──────────────────────────────────────────────────────────────────
 async function evaluateAnswer(question, answer) {
   const prompt = `You are an expert ${selectedRole} interviewer. Evaluate this answer briefly.
 
@@ -205,9 +206,9 @@ Question: ${question}
 Answer: ${answer}
 
 Respond ONLY with JSON (no markdown, no backticks):
-{"score":7,"feedback":"2 sentence evaluation","tip":"1 sentence improvement tip"}
+{"score":7,"feedback":"2 sentence evaluation","tip":"1 sentence tip"}
 
-Score 1-10. Be honest and constructive.`;
+Score 1-10.`;
 
   const res = await callClaude(prompt, 300);
   let clean = res.replace(/```json|```/g, "").trim();
@@ -218,7 +219,7 @@ Score 1-10. Be honest and constructive.`;
   try {
     return JSON.parse(clean);
   } catch {
-    return { score: 6, feedback: "Good attempt. Keep practicing.", tip: "Be more specific with examples." };
+    return { score: 6, feedback: "Good attempt.", tip: "Be more specific with examples." };
   }
 }
 
@@ -234,15 +235,12 @@ async function endInterview() {
     ? Math.round(feedbacks.reduce((a, b) => a + b.score, 0) / feedbacks.length)
     : 0;
 
-  // Animate score
   animateScore(avg);
 
-  // Score label
-  if (avg >= 8) { scoreLabel.textContent = "Excellent Performance! 🎉"; scoreDesc.textContent = "You're well-prepared for this role."; }
-  else if (avg >= 6) { scoreLabel.textContent = "Good Performance! 👍"; scoreDesc.textContent = "A few areas to polish before the big day."; }
-  else { scoreLabel.textContent = "Keep Practicing! 💪"; scoreDesc.textContent = "Review the feedback and try again."; }
+  if (avg >= 8) { scoreLabel.textContent = "Excellent! 🎉"; scoreDesc.textContent = "You're well-prepared!"; }
+  else if (avg >= 6) { scoreLabel.textContent = "Good Performance! 👍"; scoreDesc.textContent = "A few areas to polish."; }
+  else { scoreLabel.textContent = "Keep Practicing! 💪"; scoreDesc.textContent = "Review feedback and try again."; }
 
-  // Results cards
   resultsGrid.innerHTML = "";
   questions.forEach((q, i) => {
     const fb = feedbacks[i];
@@ -260,27 +258,18 @@ async function endInterview() {
     resultsGrid.appendChild(card);
   });
 
-  // Overall AI feedback
-  if (feedbacks.length > 0) {
-    overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p style="color:var(--muted);font-size:13px">Generating final feedback…</p>`;
-    try {
-      const overall = await getOverallFeedback(avg);
-      overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>${overall}</p>`;
-    } catch {
-      overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>You scored ${avg}/10 overall. Keep practicing to improve your interview skills!</p>`;
-    }
+  overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p style="color:var(--muted);font-size:13px">Generating feedback…</p>`;
+  try {
+    const overall = await getOverallFeedback(avg);
+    overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>${overall}</p>`;
+  } catch {
+    overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>You scored ${avg}/10. Keep practicing!</p>`;
   }
 }
 
 async function getOverallFeedback(avg) {
-  const summary = feedbacks.map((f, i) => `Q${i+1}: ${f.score}/10 - ${f.feedback}`).join("\n");
-  const prompt = `Based on this ${selectedRole} interview performance (avg ${avg}/10), give 2-3 sentence overall feedback and top advice. Be encouraging but honest.
-
-Performance summary:
-${summary}
-
-Respond with plain text only, no JSON, no markdown.`;
-
+  const summary = feedbacks.map((f, i) => `Q${i+1}: ${f.score}/10`).join(", ");
+  const prompt = `Give 2-3 sentence overall feedback for a ${selectedRole} interview candidate who scored ${avg}/10 average. Scores: ${summary}. Be encouraging but honest. Plain text only.`;
   return await callClaude(prompt, 200);
 }
 
@@ -292,25 +281,20 @@ function animateScore(target) {
   const timer = setInterval(() => {
     current = Math.min(current + step, target);
     scoreNum.textContent = Math.round(current);
-    const offset = circumference - (current / 10) * circumference;
-    scoreArc.style.strokeDashoffset = offset;
+    scoreArc.style.strokeDashoffset = circumference - (current / 10) * circumference;
     if (current >= target) clearInterval(timer);
   }, 30);
 }
 
-// ── VOICE INPUT ───────────────────────────────────────────────────────────────
+// ── VOICE ─────────────────────────────────────────────────────────────────────
 micBtn.addEventListener("click", toggleVoice);
 
 function toggleVoice() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert("Voice input not supported in this browser. Please use Chrome.");
+    alert("Voice not supported. Use Chrome.");
     return;
   }
-
-  if (isListening) {
-    recognition.stop();
-    return;
-  }
+  if (isListening) { recognition.stop(); return; }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
@@ -323,34 +307,28 @@ function toggleVoice() {
     micBtn.classList.add("listening");
     voiceStatus.style.display = "flex";
   };
-
   recognition.onresult = (e) => {
-    const transcript = Array.from(e.results)
-      .map(r => r[0].transcript).join("");
-    answerInput.value = transcript;
+    answerInput.value = Array.from(e.results).map(r => r[0].transcript).join("");
   };
-
   recognition.onend = () => {
     isListening = false;
     micBtn.classList.remove("listening");
     voiceStatus.style.display = "none";
   };
-
   recognition.onerror = () => {
     isListening = false;
     micBtn.classList.remove("listening");
     voiceStatus.style.display = "none";
   };
-
   recognition.start();
 }
 
-// ── RESTART / NEW ROLE ────────────────────────────────────────────────────────
+// ── RESTART ───────────────────────────────────────────────────────────────────
 restartBtn.addEventListener("click", () => {
-  showScreen("interview");
   currentQ = 0; questions = []; answers = []; feedbacks = [];
   chatArea.innerHTML = "";
   chatArea.appendChild(thinkingMsg);
+  showScreen("interview");
   updateProgress();
   thinkingMsg.style.display = "flex";
   generateQuestions().then(qs => {
@@ -359,7 +337,7 @@ restartBtn.addEventListener("click", () => {
     askQuestion(0);
   }).catch(() => {
     thinkingMsg.style.display = "none";
-    addAIMessage("Connection error. Please check your API key.");
+    addAIMessage("Connection error. Check API key.");
   });
 });
 
@@ -421,12 +399,12 @@ function addUserMessage(text) {
 }
 
 function addFeedbackBubble(fb) {
-  const scoreClass = fb.score >= 8 ? "var(--green)" : fb.score >= 6 ? "var(--amber)" : "var(--rose)";
+  const scoreColor = fb.score >= 8 ? "var(--green)" : fb.score >= 6 ? "var(--amber)" : "var(--rose)";
   const div = document.createElement("div");
   div.className = "feedback-bubble";
-  div.style.borderLeftColor = scoreClass;
+  div.style.borderLeftColor = scoreColor;
   div.innerHTML = `
-    <div class="fb-score" style="color:${scoreClass}">Score: ${fb.score}/10</div>
+    <div class="fb-score" style="color:${scoreColor}">Score: ${fb.score}/10</div>
     <p>${fb.feedback}</p>
     ${fb.tip ? `<p style="margin-top:6px;color:var(--green)">💡 ${fb.tip}</p>` : ""}
   `;
@@ -443,20 +421,9 @@ function escHtml(str) {
 }
 
 function updateProgress() {
-  const pct = (currentQ / TOTAL_Q) * 100;
-  progressFill.style.width = pct + "%";
+  progressFill.style.width = (currentQ / TOTAL_Q * 100) + "%";
 }
 
-function showScreen(name) {
-  homeScreen.classList.remove("active");
-  interviewScreen.classList.remove("active");
-  resultsScreen.classList.remove("active");
-  if (name === "home") homeScreen.classList.add("active");
-  else if (name === "interview") interviewScreen.classList.add("active");
-  else if (name === "results") resultsScreen.classList.add("active");
-}
-
-// Auto-resize textarea
 answerInput.addEventListener("input", () => {
   answerInput.style.height = "auto";
   answerInput.style.height = Math.min(answerInput.scrollHeight, 140) + "px";

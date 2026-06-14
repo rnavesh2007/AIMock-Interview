@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InterviewAI — AI Mock Interviewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060E14; --surface: #0C1820; --card: #111F2C; --card2: #162534;
+      --border: #1E3448; --borderL: #2A4560;
+      --green: #6EE7B7; --greenDim: #6EE7B720;
+      --blue: #60A5FA; --amber: #FBBF24; --rose: #FB7185;
+      --text: #E8F4FF; --textMid: #8BA5BF; --muted: #3D5870;
+    }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+    .screen { position: fixed; inset: 0; display: none; overflow-y: auto; flex-direction: column; }
+    .screen.active { display: flex; }
+    #homeScreen { align-items: center; padding: 40px 20px 60px; background: var(--bg); }
+    .home-content { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: 28px; }
+    .logo-wrap { display: flex; align-items: center; gap: 14px; }
+    .logo-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--greenDim); border: 1.5px solid var(--green); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 24px #6EE7B730; }
+    .logo-icon svg { width: 34px; height: 34px; }
+    .logo-title { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; }
+    .logo-title span { color: var(--green); }
+    .logo-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .hero h2 { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
+    .hero p { color: var(--textMid); font-size: 14px; line-height: 1.7; }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .role-btn, .type-btn { padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); color: var(--textMid); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+    .role-btn.active, .role-btn:hover { border-color: var(--green); color: var(--green); background: var(--greenDim); }
+    .type-btn.active, .type-btn:hover { border-color: var(--blue); color: var(--blue); background: #60A5FA15; }
+    .api-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .api-wrap label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; }
+    .api-wrap input { background: var(--card); border: 1.5px solid var(--border); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s; width: 100%; }
+    .api-wrap input:focus { border-color: var(--green); }
+    .api-wrap input::placeholder { color: var(--muted); }
+    .api-hint { font-size: 11px; color: var(--muted); }
+    .api-hint a { color: var(--green); text-decoration: none; }
+    .start-btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; border-radius: 14px; border: none; background: linear-gradient(135deg, var(--green), #34D399); color: #060E14; font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; cursor: pointer; box-shadow: 0 8px 32px #6EE7B730; transition: opacity 0.2s; }
+    .start-btn:hover { opacity: 0.9; }
+    .start-btn svg { width: 18px; height: 18px; }
+    .home-footer { text-align: center; }
+    .home-footer p { font-size: 11px; color: var(--muted); line-height: 1.8; }
+    #interviewScreen { height: 100vh; }
+    .iv-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .iv-left { display: flex; align-items: center; gap: 12px; }
+    .ai-av { width: 40px; height: 40px; border-radius: 50%; background: var(--greenDim); border: 1.5px solid var(--green); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px #6EE7B730; flex-shrink: 0; }
+    .ai-av svg { width: 26px; height: 26px; }
+    .ai-av.talking { animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 12px #6EE7B730} 50%{box-shadow:0 0 24px #6EE7B760} }
+    .iv-name { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; }
+    .iv-role { font-size: 11px; color: var(--textMid); margin-top: 1px; }
+    .iv-right { display: flex; align-items: center; gap: 10px; }
+    .q-counter { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px; }
+    .q-counter span { color: var(--green); }
+    .end-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+    .end-btn:hover { border-color: var(--rose); color: var(--rose); }
+    .prog-bar { height: 3px; background: var(--border); flex-shrink: 0; }
+    .prog-fill { height: 100%; background: var(--green); transition: width 0.5s ease; width: 0%; }
+    .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .msg { display: flex; gap: 10px; animation: msgIn 0.25s ease; max-width: 88%; }
+    @keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .msg.ai { align-self: flex-start; }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-av { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; font-size: 13px; font-weight: 700; }
+    .msg.ai .msg-av { background: var(--greenDim); border: 1px solid var(--green); }
+    .msg.ai .msg-av svg { width: 20px; height: 20px; }
+    .msg.user .msg-av { background: var(--blue); color: #fff; font-family: 'Space Grotesk', sans-serif; }
+    .msg-bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.65; }
+    .msg.ai .msg-bubble { background: var(--card); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg.user .msg-bubble { background: #1E3F5C; border: 1px solid #2A5070; color: var(--text); border-bottom-right-radius: 4px; }
+    .fb-bubble { background: var(--card2); border: 1px solid var(--borderL); border-radius: 14px; padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--textMid); border-left: 3px solid var(--green); }
+    .fb-score { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: var(--green); margin-bottom: 6px; }
+    .thinking { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+    .dots { display: flex; gap: 5px; }
+    .dots span { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; opacity: 0.4; }
+    .dots span:nth-child(2){animation-delay:0.2s} .dots span:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-6px);opacity:1} }
+    .input-area { padding: 14px 16px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .voice-status { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: var(--green); font-size: 13px; }
+    .v-wave { display: flex; align-items: center; gap: 3px; }
+    .v-wave span { width: 3px; background: var(--green); border-radius: 3px; animation: wave 0.8s ease-in-out infinite; }
+    .v-wave span:nth-child(1){height:8px} .v-wave span:nth-child(2){height:14px;animation-delay:0.1s} .v-wave span:nth-child(3){height:20px;animation-delay:0.2s} .v-wave span:nth-child(4){height:14px;animation-delay:0.3s} .v-wave span:nth-child(5){height:8px;animation-delay:0.4s}
+    @keyframes wave { 0%,100%{transform:scaleY(0.5)} 50%{transform:scaleY(1)} }
+    .input-row { display: flex; align-items: flex-end; gap: 10px; }
+    #answerInput { flex: 1; background: var(--card); border: 1.5px solid var(--border); color: var(--text); border-radius: 14px; padding: 12px 16px; font-size: 14px; font-family: 'Inter', sans-serif; resize: none; outline: none; line-height: 1.55; transition: border-color 0.2s; max-height: 140px; overflow-y: auto; }
+    #answerInput:focus { border-color: var(--green); }
+    #answerInput::placeholder { color: var(--muted); }
+    .input-btns { display: flex; flex-direction: column; gap: 8px; }
+    .mic-btn { width: 42px; height: 42px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--card); color: var(--textMid); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .mic-btn svg { width: 18px; height: 18px; }
+    .mic-btn.listening, .mic-btn:hover { border-color: var(--green); color: var(--green); background: var(--greenDim); }
+    .send-btn { width: 42px; height: 42px; border-radius: 12px; border: none; background: var(--green); color: #060E14; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; }
+    .send-btn svg { width: 16px; height: 16px; }
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .input-hint { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+    #resultsScreen { align-items: center; padding: 40px 20px 60px; background: var(--bg); }
+    .results-wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 24px; }
+    .results-top { display: flex; align-items: center; gap: 20px; }
+    .score-circle { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+    .score-circle svg { width: 110px; height: 110px; }
+    .score-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .score-text span { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; color: var(--green); line-height: 1; }
+    .score-text small { font-size: 12px; color: var(--muted); }
+    .results-title h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .results-title p { color: var(--textMid); font-size: 13px; line-height: 1.6; }
+    .result-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+    .rc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
+    .rc-q { font-size: 13px; color: var(--textMid); line-height: 1.5; flex: 1; }
+    .rc-score { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; flex-shrink: 0; padding: 2px 10px; border-radius: 8px; }
+    .rc-score.good { color: var(--green); background: var(--greenDim); }
+    .rc-score.mid { color: var(--amber); background: #FBBF2418; }
+    .rc-score.low { color: var(--rose); background: #FB718518; }
+    .rc-fb { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .overall { background: linear-gradient(135deg, #6EE7B710, #60A5FA10); border: 1px solid var(--borderL); border-radius: 16px; padding: 18px; font-size: 14px; color: var(--textMid); line-height: 1.7; }
+    .overall h3 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+    .results-actions { display: flex; gap: 12px; }
+    .restart-btn, .new-role-btn { flex: 1; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.2s; }
+    .restart-btn { background: var(--green); border: none; color: #060E14; }
+    .new-role-btn { background: transparent; border: 1.5px solid var(--border); color: var(--textMid); }
+    .new-role-btn:hover { border-color: var(--green); color: var(--green); }
+    .results-footer { text-align: center; }
+    .results-footer p { font-size: 11px; color: var(--muted); line-height: 1.8; }
+    @media(max-width:480px){ .results-top{flex-direction:column} }
+  </style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen active" id="homeScreen">
+  <div class="home-content">
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="22" stroke="#6EE7B7" stroke-width="2" opacity="0.4"/>
+          <circle cx="24" cy="17" r="7" fill="#6EE7B7" opacity="0.85"/>
+          <path d="M10 40c0-7.732 6.268-14 14-14s14 6.268 14 14" stroke="#6EE7B7" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="logo-title">Interview<span>AI</span></h1>
+        <p class="logo-sub">Powered by Gemini</p>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h2>Ace your next interview</h2>
+      <p>Practice with an AI interviewer that asks real questions and gives honest feedback — voice or text.</p>
+    </div>
+
+    <div>
+      <p class="section-label">Select your role</p>
+      <div class="btn-group">
+        <button class="role-btn active" data-role="Data Science">📊 Data Science</button>
+        <button class="role-btn" data-role="Machine Learning">🤖 Machine Learning</button>
+        <button class="role-btn" data-role="Full Stack Developer">💻 Full Stack Dev</button>
+        <button class="role-btn" data-role="AI Research">🔬 AI Research</button>
+        <button class="role-btn" data-role="Data Analyst">📈 Data Analyst</button>
+        <button class="role-btn" data-role="Software Engineer">⚙️ Software Engineer</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="section-label">Interview type</p>
+      <div class="btn-group">
+        <button class="type-btn active" data-type="both">🎯 Both (Technical + HR)</button>
+        <button class="type-btn" data-type="technical">💡 Technical Only</button>
+        <button class="type-btn" data-type="hr">🤝 HR Only</button>
+      </div>
+    </div>
+
+    <div class="api-wrap">
+      <label>Google Gemini API Key (Free!)</label>
+      <input type="password" id="apiKeyInput" placeholder="AIza..." autocomplete="off"/>
+      <span class="api-hint">Get free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> · Stays in your browser</span>
+    </div>
+
+    <button class="start-btn" id="startBtn">
+      Start Interview
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+
+    <div class="home-footer">
+      <p>© 2025 Navesh R · All Rights Reserved</p>
+      <p>B.Tech AI & Data Science · Vel Tech, Chennai</p>
+    </div>
+  </div>
+</div>
+
+<!-- INTERVIEW -->
+<div class="screen" id="interviewScreen">
+  <div class="iv-header">
+    <div class="iv-left">
+      <div class="ai-av" id="aiAvatar">
+        <svg viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="11" r="5" fill="#6EE7B7" opacity="0.9"/>
+          <path d="M6 26c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </div>
+      <div>
+        <p class="iv-name">InterviewAI</p>
+        <p class="iv-role" id="headerRole">Data Science Interview</p>
+      </div>
+    </div>
+    <div class="iv-right">
+      <div class="q-counter">Q <span id="qNum">1</span> / 8</div>
+      <button class="end-btn" id="endBtn">End</button>
+    </div>
+  </div>
+
+  <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+
+  <div class="chat-area" id="chatArea">
+    <div class="thinking" id="thinkingMsg" style="display:none">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <p>Thinking…</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="voice-status" id="voiceStatus" style="display:none">
+      <div class="v-wave"><span></span><span></span><span></span><span></span><span></span></div>
+      <p>Listening…</p>
+    </div>
+    <div class="input-row">
+      <textarea id="answerInput" placeholder="Type your answer… or use the mic" rows="2" disabled></textarea>
+      <div class="input-btns">
+        <button class="mic-btn" id="micBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+          </svg>
+        </button>
+        <button class="send-btn" id="submitBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22,2 15,22 11,13 2,9"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <p class="input-hint">Enter to submit · Shift+Enter for new line</p>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="screen" id="resultsScreen">
+  <div class="results-wrap">
+    <div class="results-top">
+      <div class="score-circle">
+        <svg viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="48" fill="none" stroke="#1a2a3a" stroke-width="9"/>
+          <circle cx="55" cy="55" r="48" fill="none" stroke="#6EE7B7" stroke-width="9"
+            stroke-dasharray="301.6" stroke-dashoffset="301.6"
+            stroke-linecap="round" transform="rotate(-90 55 55)" id="scoreArc"/>
+        </svg>
+        <div class="score-text"><span id="scoreNum">0</span><small>/10</small></div>
+      </div>
+      <div class="results-title">
+        <h2 id="scoreLabel">Interview Complete!</h2>
+        <p id="scoreDesc">Here's your performance</p>
+      </div>
+    </div>
+    <div id="resultsGrid"></div>
+    <div class="overall" id="overallFeedback"></div>
+    <div class="results-actions">
+      <button class="restart-btn" id="restartBtn">🔄 Try Again</button>
+      <button class="new-role-btn" id="newRoleBtn">🎯 Change Role</button>
+    </div>
+    <div class="results-footer">
+      <p>© 2025 Navesh R · All Rights Reserved · B.Tech AI & DS · Vel Tech, Chennai</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Gemini API
+const GEMINI_MODEL = "gemini-2.0-flash";
+const TOTAL_Q = 8;
+
+let API_KEY = "", selectedRole = "Data Science", selectedType = "both";
+let currentQ = 0, questions = [], answers = [], feedbacks = [];
+let isListening = false, recognition = null, isWaiting = false;
+
+const $ = id => document.getElementById(id);
+const homeScreen = $("homeScreen"), interviewScreen = $("interviewScreen"), resultsScreen = $("resultsScreen");
+const chatArea = $("chatArea"), thinkingMsg = $("thinkingMsg"), voiceStatus = $("voiceStatus");
+const answerInput = $("answerInput"), submitBtn = $("submitBtn"), micBtn = $("micBtn");
+const progFill = $("progFill"), qNum = $("qNum"), headerRole = $("headerRole"), aiAvatar = $("aiAvatar");
+const scoreArc = $("scoreArc"), scoreNum = $("scoreNum"), scoreLabel = $("scoreLabel"), scoreDesc = $("scoreDesc");
+const resultsGrid = $("resultsGrid"), overallFeedback = $("overallFeedback");
+
+function showScreen(name) {
+  [homeScreen, interviewScreen, resultsScreen].forEach(s => { s.classList.remove("active"); s.style.display = "none"; });
+  const map = { home: homeScreen, interview: interviewScreen, results: resultsScreen };
+  map[name].classList.add("active");
+  map[name].style.display = "flex";
+}
+
+document.querySelectorAll(".role-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".role-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active"); selectedRole = btn.dataset.role;
+}));
+
+document.querySelectorAll(".type-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active"); selectedType = btn.dataset.type;
+}));
+
+$("startBtn").addEventListener("click", async () => {
+  const key = $("apiKeyInput").value.trim();
+  if (!key) { alert("Please enter your Gemini API key!\nGet it free at aistudio.google.com"); return; }
+  API_KEY = key;
+  currentQ = 0; questions = []; answers = []; feedbacks = [];
+  chatArea.innerHTML = ""; chatArea.appendChild(thinkingMsg);
+  showScreen("interview");
+  headerRole.textContent = `${selectedRole} Interview`;
+  updateProgress();
+  thinkingMsg.style.display = "flex";
+  try {
+    questions = await generateQuestions();
+    thinkingMsg.style.display = "none";
+    askQuestion(0);
+  } catch(e) {
+    thinkingMsg.style.display = "none";
+    addAI("Sorry, couldn't connect. Check your Gemini API key at aistudio.google.com");
+  }
+});
+
+// Gemini API call
+async function gemini(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error?.message || "API error " + res.status);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+async function generateQuestions() {
+  let tp = selectedType === "technical" ? "All technical." : selectedType === "hr" ? "All HR/behavioral." : "5 technical + 3 HR.";
+  const prompt = `Generate exactly ${TOTAL_Q} interview questions for a ${selectedRole} role. ${tp} Specific and realistic.\nRespond ONLY with a JSON array, no markdown, no backticks:\n["q1","q2","q3","q4","q5","q6","q7","q8"]`;
+  const res = await gemini(prompt);
+  const clean = res.replace(/\`\`\`json|\`\`\`/g, "").trim();
+  const s = clean.indexOf("["), e = clean.lastIndexOf("]");
+  if (s === -1 || e === -1) throw new Error("bad response");
+  return JSON.parse(clean.substring(s, e+1));
+}
+
+function askQuestion(i) {
+  if (i >= questions.length) { endInterview(); return; }
+  currentQ = i; qNum.textContent = i+1; updateProgress();
+  const isHR = selectedType === "hr" || (selectedType === "both" && i >= 5);
+  const tag = isHR
+    ? `<span style="background:#60A5FA18;color:#60A5FA;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">HR</span>`
+    : `<span style="background:#6EE7B718;color:#6EE7B7;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">TECHNICAL</span>`;
+  addAI(`${tag}<br><br>${questions[i]}`);
+  aiAvatar.classList.add("talking");
+  setTimeout(() => aiAvatar.classList.remove("talking"), 1500);
+  submitBtn.disabled = false; answerInput.disabled = false;
+  answerInput.value = ""; answerInput.focus();
+}
+
+submitBtn.addEventListener("click", submitAnswer);
+answerInput.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAnswer(); } });
+
+async function submitAnswer() {
+  const ans = answerInput.value.trim();
+  if (!ans || isWaiting) return;
+  addUser(ans); answers.push(ans);
+  answerInput.value = ""; answerInput.style.height = "auto";
+  submitBtn.disabled = true; answerInput.disabled = true; isWaiting = true;
+  thinkingMsg.style.display = "flex";
+  try {
+    const fb = await evaluate(questions[currentQ], ans);
+    feedbacks.push(fb);
+    thinkingMsg.style.display = "none";
+    addFeedback(fb);
+    setTimeout(() => {
+      if (currentQ + 1 < questions.length) askQuestion(currentQ + 1);
+      else endInterview();
+      isWaiting = false;
+    }, 1800);
+  } catch(e) {
+    thinkingMsg.style.display = "none";
+    feedbacks.push({ score: 5, feedback: "Could not evaluate.", tip: "" });
+    setTimeout(() => {
+      if (currentQ + 1 < questions.length) askQuestion(currentQ + 1);
+      else endInterview();
+      isWaiting = false;
+    }, 1000);
+  }
+}
+
+async function evaluate(q, a) {
+  const prompt = `Expert ${selectedRole} interviewer. Evaluate briefly.\nQ: ${q}\nA: ${a}\nRespond ONLY with JSON (no markdown, no backticks): {"score":7,"feedback":"2 sentences","tip":"1 tip"}`;
+  const res = await gemini(prompt);
+  let clean = res.replace(/\`\`\`json|\`\`\`/g, "").trim();
+  const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+  if (s !== -1 && e !== -1) clean = clean.substring(s, e+1);
+  try { return JSON.parse(clean); }
+  catch { return { score: 6, feedback: "Good attempt.", tip: "Be more specific." }; }
+}
+
+$("endBtn").addEventListener("click", () => { if (confirm("End interview?")) endInterview(); });
+
+async function endInterview() {
+  showScreen("results");
+  const avg = feedbacks.length ? Math.round(feedbacks.reduce((a,b) => a+b.score, 0) / feedbacks.length) : 0;
+  animateScore(avg);
+  if (avg >= 8) { scoreLabel.textContent = "Excellent! 🎉"; scoreDesc.textContent = "Well prepared!"; }
+  else if (avg >= 6) { scoreLabel.textContent = "Good Job! 👍"; scoreDesc.textContent = "A few areas to polish."; }
+  else { scoreLabel.textContent = "Keep Practicing! 💪"; scoreDesc.textContent = "Review feedback below."; }
+  resultsGrid.innerHTML = "";
+  questions.forEach((q, i) => {
+    const fb = feedbacks[i]; if (!fb) return;
+    const sc = fb.score >= 8 ? "good" : fb.score >= 6 ? "mid" : "low";
+    const card = document.createElement("div"); card.className = "result-card";
+    card.innerHTML = `<div class="rc-top"><p class="rc-q"><strong>Q${i+1}:</strong> ${q}</p><span class="rc-score ${sc}">${fb.score}/10</span></div><p class="rc-fb">${fb.feedback}${fb.tip ? ` <em style="color:#6EE7B7">💡 ${fb.tip}</em>` : ""}</p>`;
+    resultsGrid.appendChild(card);
+  });
+  overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p style="color:var(--muted)">Generating…</p>`;
+  try {
+    const s = feedbacks.map((f,i) => `Q${i+1}:${f.score}/10`).join(", ");
+    const res = await gemini(`2-3 sentence overall feedback for ${selectedRole} candidate, avg ${avg}/10. Scores: ${s}. Encouraging but honest. Plain text only.`);
+    overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>${res}</p>`;
+  } catch { overallFeedback.innerHTML = `<h3>🤖 Overall Assessment</h3><p>You scored ${avg}/10. Keep practicing!</p>`; }
+}
+
+function animateScore(target) {
+  const c = 301.6; let cur = 0;
+  const t = setInterval(() => {
+    cur = Math.min(cur + target/40, target);
+    scoreNum.textContent = Math.round(cur);
+    scoreArc.style.strokeDashoffset = c - (cur/10)*c;
+    if (cur >= target) clearInterval(t);
+  }, 30);
+}
+
+micBtn.addEventListener("click", () => {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert("Use Chrome for voice."); return; }
+  if (isListening) { recognition.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR(); recognition.lang = "en-US"; recognition.interimResults = true;
+  recognition.onstart = () => { isListening = true; micBtn.classList.add("listening"); voiceStatus.style.display = "flex"; };
+  recognition.onresult = e => { answerInput.value = Array.from(e.results).map(r => r[0].transcript).join(""); };
+  recognition.onend = () => { isListening = false; micBtn.classList.remove("listening"); voiceStatus.style.display = "none"; };
+  recognition.onerror = () => { isListening = false; micBtn.classList.remove("listening"); voiceStatus.style.display = "none"; };
+  recognition.start();
+});
+
+$("restartBtn").addEventListener("click", () => {
+  currentQ = 0; questions = []; answers = []; feedbacks = [];
+  chatArea.innerHTML = ""; chatArea.appendChild(thinkingMsg);
+  showScreen("interview"); updateProgress();
+  thinkingMsg.style.display = "flex";
+  generateQuestions().then(qs => { questions = qs; thinkingMsg.style.display = "none"; askQuestion(0); })
+    .catch(() => { thinkingMsg.style.display = "none"; addAI("Connection error. Check API key."); });
+});
+
+$("newRoleBtn").addEventListener("click", () => showScreen("home"));
+
+function addAI(html) {
+  const d = document.createElement("div"); d.className = "msg ai";
+  d.innerHTML = `<div class="msg-av"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="5" fill="#6EE7B7" opacity="0.9"/><path d="M6 26c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" opacity="0.7"/></svg></div><div class="msg-bubble">${html}</div>`;
+  chatArea.insertBefore(d, thinkingMsg); chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addUser(text) {
+  const d = document.createElement("div"); d.className = "msg user";
+  d.innerHTML = `<div class="msg-av">N</div><div class="msg-bubble">${text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/\n/g,"<br>")}</div>`;
+  chatArea.insertBefore(d, thinkingMsg); chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addFeedback(fb) {
+  const c = fb.score >= 8 ? "var(--green)" : fb.score >= 6 ? "var(--amber)" : "var(--rose)";
+  const d = document.createElement("div"); d.className = "fb-bubble"; d.style.borderLeftColor = c;
+  d.innerHTML = `<div class="fb-score" style="color:${c}">Score: ${fb.score}/10</div><p>${fb.feedback}</p>${fb.tip ? `<p style="margin-top:6px;color:var(--green)">💡 ${fb.tip}</p>` : ""}`;
+  chatArea.insertBefore(d, thinkingMsg); chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function updateProgress() { progFill.style.width = (currentQ / TOTAL_Q * 100) + "%"; }
+
+answerInput.addEventListener("input", () => { answerInput.style.height = "auto"; answerInput.style.height = Math.min(answerInput.scrollHeight, 140) + "px"; });
+</script>
+</body>
+</html>
